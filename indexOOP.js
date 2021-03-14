@@ -1,29 +1,29 @@
 (function () { // Anonymous function encapsulating all code as per the module pattern.
-  'use strict'; // Ensures code is much more secure and optimized by making fewer assumptions.
+  'use strict';
 
   // www.npmjs.com/package/prompt
   const prompt = require('prompt');
-  prompt.start();
 
   class Terminal {
-    constructor() {
-      let completed = false;
+    constructor(name) {
+      this.name = name;
+      this.name.start();
     }
     request() {
-      return prompt.get({
+      return this.name.get({
         name: 'header',
-        pattern: /[0-9 ]{3,4}/,
-        message: 'Introduce 4 numbers please',
+        // RegExp for 3 or 4 numbers
+        // For different shapes could get more numbers
+        pattern: /[0-9 ]{5,7}/,
+        message: 'Introduce 3 or 4 numbers please',
         required: true
       })
     }
-    exit() {
-      this.completed = "true";
-    }
     getCommands() {
-      return prompt.get({
+      return this.name.get({
         name: 'commands',
-        pattern: /([0-4{1}] ?)+/,
+        // RegExp for commands 0 to 4 with empty spaces in between
+        pattern: /([0-4](?= ) )+[0-4]|([0-4])/,
         message: `Only commands: 
            0 = quit
            1 = move forward one step
@@ -32,49 +32,36 @@
            4 = rotate counterclockwise`
       })
     }
-    setCommands(commands) {
-      for (let command of commands) {
-        parseInt(command)
-
-        if (command === "0") {
-          this.exit();
-          break
-        } else if (command === "1") {
-          if (Point.checkFalling()) {
-            this.exit();
-            break;
-          }
-        } else if (command === "2") {
-          if (Point.checkFalling()) {
-            this.exit();
-            break;
-          }
-        } else {
-          return;
-        }
-      }
-    }
-    getCompleted() {
-      return this.completed;
-    }
   }
+  let terminal = new Terminal(prompt);
 
   class Point {
     constructor(resolve) {
+      // string from console in array
       let header = resolve.header.split(" ");
+      // Cutting empty elements
       header = header.filter(entry => entry.trim() != '');
-      if (header.lenght == 3) {
-        let xSpace = header[0];
-        let ySpace = header[0];
-      } else if (header.lenght == 4) {
-        let xSpace = header[0];
-        let ySpace = header[1];
+      // If only 3 numbers then table will be square
+      if (header.length == 3) {
+        this.xSpace = header[0];
+        this.ySpace = header[0];
+      } else if (header.length == 4) {
+        this.xSpace = header[0];
+        this.ySpace = header[1];
       }
+      // For different shapes will need more numbers
+      // else if (header.length == 6) {
+      //  building custom shape
+      // }
+
+      // Location of the point taken from the last two numbers
       this.x = parseInt(header[header.length - 2]);
       this.y = parseInt(header[header.length - 1]);
       let output = [this.x, this.y];
       this.dir = "north";
+      let completed = false;
     }
+    // Moves the point
     move(course) {
       if (course === "forward" && this.dir === "north" || course === "backward" && this.dir === "south") {
         this.y--;
@@ -86,6 +73,7 @@
         this.x--;
       }
     }
+    // Changes the dir variable
     rotate(changeDir) {
       switch (this.dir) {
         case "north":
@@ -120,7 +108,8 @@
           break;
       }
     }
-    static checkFalling() {
+    // checking if the point is in the table
+    checkFalling() {
       if (this.x < 0 || this.y < 0 || this.x > this.xSpace || this.y > this.ySpace) {
         this.setOutput([-1, -1])
         return true;
@@ -128,18 +117,28 @@
         return false;
       }
     }
+    // Getting commands and executing them
     makeMovements(movements) {
       for (let movement of movements) {
         parseInt(movement)
 
         if (movement === "0") {
-          console.log(this.getOutput());
+          this.exit();
+          break
         } else if (movement === "1") {
           this.move("forward");
           this.setOutput([this.x, this.y]);
+          if (this.checkFalling()) {
+            this.exit();
+            break;
+          }
         } else if (movement === "2") {
           this.move("backward");
           this.setOutput([this.x, this.y]);
+          if (this.checkFalling()) {
+            this.exit();
+            break;
+          }
         } else if (movement === "3") {
           this.rotate("clockwise");
         } else if (movement === "4") {
@@ -155,36 +154,39 @@
     setOutput(newValue) {
       return this.output = newValue;
     }
+    getCompleted() {
+      return this.completed;
+    }
+    exit() {
+      this.completed = "true";
+      console.log(this.getOutput());
+    }
   }
-
-  let terminal = new Terminal();
-
+  // I assumed that I will need more than one request of commands because the result is being showed only with command 0 and when the point is falling from the table
   function makeRequests(point) {
+    // Stdin for commands
     terminal.getCommands()
+      // Promise to make requests consecutive
       .then(function (result) {
+        // Transforming string of commands in array
         const commands = result.commands.split(" ");
+        // Executing commands
         point.makeMovements(commands)
-        terminal.setCommands(commands)
-
-        if (!commands.includes('0') && !terminal.getCompleted()) {
+        // Checking if need more commands
+        if (!commands.includes('0') && !point.getCompleted()) {
+          // Recursive function to make enaugh requests to get result
           makeRequests(point);
         }
       })
-      .catch(function (err) {
-        console.log(err);
-        return
-      });
   }
-
+  // First request
   terminal.request()
     .then(function (resolve) {
+      // Creating point
       let point = new Point(resolve);
+      // Requesting commands
       makeRequests(point);
       return
     })
-    .catch(function (err) {
-      console.log(err);
-      return
-    });
 
 })();

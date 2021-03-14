@@ -1,7 +1,7 @@
 # To use in console:
 
 1. npm install
-2. node index.js or node indexOOP.js
+2. node indexOOP.js
 3. type 3 or 4 numbers: (examlpe: 4 4 2 2)
    * One or two for table size
    * two for object location
